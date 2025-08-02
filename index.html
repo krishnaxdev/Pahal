@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pahal Library Management System</title>
+    <!-- Tailwind CSS for modern, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        /* Custom styling for Print to PDF */
+        @media print {
+            body {
+                background-color: white;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-area {
+                display: block;
+                width: 100%;
+                margin: 0;
+                padding: 2rem;
+                background-color: white;
+            }
+            /* Adjust table for printing */
+            .print-area table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .print-area th, .print-area td {
+                border: 1px solid #e5e7eb;
+                padding: 8px;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Login/Setup Page (always visible until logged in) -->
+    <div id="auth-page" class="flex items-center justify-center min-h-screen bg-gray-200">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h2 id="auth-title" class="text-3xl font-bold text-gray-800 text-center mb-6">Pahal Library Login</h2>
+            <form id="auth-form">
+                <div class="mb-4">
+                    <label for="auth-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="auth-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div class="mb-6 hidden" id="auth-password-confirm-container">
+                    <label for="auth-password-confirm" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="auth-password-confirm" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <button type="submit" id="auth-button" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">Login</button>
+            </form>
+            <a href="#" id="forgot-password-link" class="block text-center mt-4 text-sm text-indigo-600 hover:text-indigo-800 transition duration-300">Forgot Password?</a>
+            <p id="auth-error" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
+
+
+    <!-- Main Application Container (Hidden until logged in) -->
+    <div id="app-container" class="container mx-auto p-4 hidden">
+
+        <!-- Header and Navigation (No-Print) -->
+        <header class="no-print flex flex-col md:flex-row items-center justify-between p-4 bg-white rounded-xl shadow-lg mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Pahal Library Management System</h1>
+            <nav class="flex items-center space-x-4">
+                <ul class="flex flex-wrap justify-center space-x-2 md:space-x-4">
+                    <li><button class="nav-button bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300" data-page="dashboard">Dashboard</button></li>
+                    <li><button class="nav-button bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-300" data-page="students">Students</button></li>
+                    <li><button class="nav-button bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-300" data-page="fees">Fees</button></li>
+                    <li><button class="nav-button bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-300" data-page="settings">Settings</button></li>
+                </ul>
+                <button id="logout-button" class="bg-red-500 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition duration-300">Logout</button>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="bg-white p-6 rounded-xl shadow-lg">
+
+            <!-- Modal for alerts and messages -->
+            <div id="modal-container" class="no-print fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4">
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full relative">
+                    <button id="modal-close-button" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">&times;</button>
+                    <div id="modal-content" class="text-gray-800"></div>
+                    <button id="modal-ok-button" class="mt-4 bg-indigo-600 text-white py-2 px-4 rounded-lg w-full hover:bg-indigo-700 transition duration-300">OK</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Page -->
+            <section id="dashboard-page" class="page active">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-indigo-500 text-white rounded-xl p-6 shadow-md transform hover:scale-105 transition-transform duration-300">
+                        <h3 class="text-lg font-medium mb-1">Total Students</h3>
+                        <p id="total-students-count" class="text-4xl font-bold">0</p>
+                    </div>
+                    <div class="bg-green-500 text-white rounded-xl p-6 shadow-md transform hover:scale-105 transition-transform duration-300">
+                        <h3 class="text-lg font-medium mb-1">Monthly Income</h3>
+                        <p id="monthly-income-count" class="text-4xl font-bold">₹0</p>
+                    </div>
+                    <div class="bg-red-500 text-white rounded-xl p-6 shadow-md transform hover:scale-105 transition-transform duration-300">
+                        <h3 class="text-lg font-medium mb-1">Pending Fees</h3>
+                        <p id="pending-fees-count" class="text-4xl font-bold">0</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-semibold text-gray-700 mt-8 mb-4">Monthly Overview</h3>
+                <div class="flex items-center justify-between mb-4 no-print">
+                    <h4 class="text-lg font-medium text-gray-700">Details for <span id="current-dashboard-month-span" class="text-indigo-600"></span></h4>
+                    <div class="flex space-x-2">
+                        <button id="prev-dashboard-month" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300">&larr; Prev</button>
+                        <button id="next-dashboard-month" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300">Next &rarr;</button>
+                    </div>
+                </div>
+
+                <div id="monthly-overview-container" class="bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-100 text-blue-800 rounded-lg p-4 shadow-sm">
+                            <h5 class="text-sm font-semibold">Students Joined</h5>
+                            <p id="monthly-students-joined" class="text-2xl font-bold">0</p>
+                        </div>
+                        <div class="bg-green-100 text-green-800 rounded-lg p-4 shadow-sm">
+                            <h5 class="text-sm font-semibold">Total Income</h5>
+                            <p id="monthly-income-collected" class="text-2xl font-bold">₹0</p>
+                        </div>
+                        <div class="bg-yellow-100 text-yellow-800 rounded-lg p-4 shadow-sm">
+                            <h5 class="text-sm font-semibold">Pending Fees</h5>
+                            <p id="monthly-fees-pending" class="text-2xl font-bold">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow-inner mt-6">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Pending Fee Reminders</h3>
+                    <div id="pending-fees-list">
+                        <p class="text-gray-500">No students with pending fees for the current month.</p>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Students Page -->
+            <section id="students-page" class="page">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Student Management</h2>
+
+                <div class="no-print bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+                    <h3 id="student-form-title" class="text-xl font-medium text-gray-700 mb-4">Add New Student</h3>
+                    <form id="student-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="hidden" id="student-id-edit">
+                        <div>
+                            <label for="student-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                            <input type="text" id="student-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="student-address" class="block text-sm font-medium text-gray-700">Address</label>
+                            <input type="text" id="student-address" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="student-contact" class="block text-sm font-medium text-gray-700">Mobile Number</label>
+                            <input type="tel" id="student-contact" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="parent-name" class="block text-sm font-medium text-gray-700">Parent’s Name</label>
+                            <input type="text" id="parent-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="joining-date" class="block text-sm font-medium text-gray-700">Joining Date</label>
+                            <input type="date" id="joining-date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="gender" class="block text-sm font-medium text-gray-700">Gender</label>
+                            <select id="gender" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="seat-number" class="block text-sm font-medium text-gray-700">Seat Number</label>
+                            <input type="number" id="seat-number" placeholder="e.g., 21" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Shifts</label>
+                            <div id="shift-checkboxes" class="flex flex-wrap gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="shifts" value="Morning" class="form-checkbox text-indigo-600 rounded">
+                                    <span class="ml-2 text-sm text-gray-700">Morning</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="shifts" value="Afternoon" class="form-checkbox text-indigo-600 rounded">
+                                    <span class="ml-2 text-sm text-gray-700">Afternoon</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="shifts" value="Evening" class="form-checkbox text-indigo-600 rounded">
+                                    <span class="ml-2 text-sm text-gray-700">Evening</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="shifts" value="Night" class="form-checkbox text-indigo-600 rounded">
+                                    <span class="ml-2 text-sm text-gray-700">Night</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 flex justify-end">
+                            <button id="submit-button" type="submit" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">Add Student</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">All Students</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shifts</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joining Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-list" class="bg-white divide-y divide-gray-200">
+                                <!-- Student list will be populated here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Fees Page -->
+            <section id="fees-page" class="page">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Fee Management</h2>
+                <div class="no-print flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-medium text-gray-700">Monthly Fees for <span id="current-month-span" class="text-indigo-600"></span></h3>
+                    <div class="flex space-x-2">
+                        <button id="prev-month" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300">&larr; Prev</button>
+                        <button id="next-month" class="bg-gray-200 text-gray-800 p-2 rounded-lg hover:bg-gray-300">Next &rarr;</button>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fee-status-list" class="bg-white divide-y divide-gray-200">
+                                <!-- Fee status list will be populated here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            
+            <!-- Settings Page -->
+            <section id="settings-page" class="page">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Settings & Reports</h2>
+                <div class="no-print bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Fee Structure</h3>
+                    <form id="fee-structure-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Male Fees -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h4 class="font-bold text-lg mb-2">Male</h4>
+                                <div class="space-y-2">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">1 Shift Fee</label>
+                                        <input type="number" id="fee-male-1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">2 Shifts Fee</label>
+                                        <input type="number" id="fee-male-2" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">All Shifts Fee</label>
+                                        <input type="number" id="fee-male-3" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Night Shift Fee</label>
+                                        <input type="number" id="fee-male-night" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Female Fees -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h4 class="font-bold text-lg mb-2">Female</h4>
+                                <div class="space-y-2">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">1 Shift Fee</label>
+                                        <input type="number" id="fee-female-1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">2 Shifts Fee</label>
+                                        <input type="number" id="fee-female-2" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">All Shifts Fee</label>
+                                        <input type="text" value="Not Allowed" disabled class="mt-1 block w-full rounded-md border-gray-300 bg-gray-200 text-gray-500 shadow-sm cursor-not-allowed">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Night Shift Fee</label>
+                                        <input type="text" value="Not Allowed" disabled class="mt-1 block w-full rounded-md border-gray-300 bg-gray-200 text-gray-500 shadow-sm cursor-not-allowed">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end">
+                            <button type="submit" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">Save Fees</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="no-print bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Export/Import Data</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <button id="export-excel" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition duration-300">Export to Excel (CSV)</button>
+                        <input type="file" id="import-file" class="hidden" accept=".csv">
+                        <button id="import-data" class="bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-yellow-700 transition duration-300">Import Data (CSV)</button>
+                    </div>
+                </div>
+                <div class="no-print bg-red-50 p-6 rounded-lg shadow-inner border border-red-200">
+                    <h3 class="text-xl font-medium text-red-800 mb-4">Danger Zone</h3>
+                    <p class="text-red-700 mb-4">This will clear all data from the system. This action cannot be undone.</p>
+                    <button id="clear-data" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-red-700 transition duration-300">Clear All Data</button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    
+    <!-- Receipt Templates (Hidden for screen, visible for print) -->
+    <div id="receipt-templates" class="hidden">
+        <!-- Admission Receipt Template -->
+        <div id="admission-receipt-template" class="print-area">
+            <h2 class="text-2xl font-bold text-center mb-6">Admission Receipt - Pahal Library</h2>
+            <div class="flex justify-between items-center mb-4 text-sm text-gray-600">
+                <span>**Receipt No:** <span id="receipt-no-placeholder"></span></span>
+                <span>**Date:** <span id="receipt-date-placeholder"></span></span>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <table class="w-full text-sm">
+                    <tbody>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Student ID:</td>
+                            <td class="p-2" id="ar-student-id"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Student Name:</td>
+                            <td class="p-2" id="ar-student-name"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Parent Name:</td>
+                            <td class="p-2" id="ar-parent-name"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Mobile Number:</td>
+                            <td class="p-2" id="ar-mobile-number"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Address:</td>
+                            <td class="p-2" id="ar-student-address"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Joining Date:</td>
+                            <td class="p-2" id="ar-joining-date"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Seat Number:</td>
+                            <td class="p-2" id="ar-seat-number"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Shifts:</td>
+                            <td class="p-2" id="ar-shifts"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-right mt-8 text-sm">
+                <p>Signature of Authority</p>
+                <p>_______________________</p>
+            </div>
+        </div>
+
+        <!-- Fee Receipt Template -->
+        <div id="fee-receipt-template" class="print-area">
+            <h2 class="text-2xl font-bold text-center mb-6">Fee Receipt - Pahal Library</h2>
+            <div class="flex justify-between items-center mb-4 text-sm text-gray-600">
+                <span>**Receipt No:** <span id="fee-receipt-no-placeholder"></span></span>
+                <span>**Date:** <span id="fee-receipt-date-placeholder"></span></span>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <table class="w-full text-sm">
+                    <tbody>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Student ID:</td>
+                            <td class="p-2" id="fr-student-id"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Student Name:</td>
+                            <td class="p-2" id="fr-student-name"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Month:</td>
+                            <td class="p-2" id="fr-month"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Fee Amount:</td>
+                            <td class="p-2" id="fr-fee-amount"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Payment Date:</td>
+                            <td class="p-2" id="fr-payment-date"></td>
+                        </tr>
+                        <tr>
+                            <td class="font-medium text-gray-700 p-2">Payment Mode:</td>
+                            <td class="p-2" id="fr-payment-mode"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-right mt-8 text-sm">
+                <p>Signature of Authority</p>
+                <p>_______________________</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Application State and Data Management ---
+        const state = {
+            students: [],
+            fees: {},
+            lastStudentId: 0,
+            currentFeeMonth: new Date(),
+            feeStructure: {
+                'Male': {
+                    'dayShifts': { 1: 350, 2: 600, 3: 800 },
+                    'nightShift': 400
+                },
+                'Female': {
+                    'dayShifts': { 1: 300, 2: 500, 3: 'not-allowed' },
+                    'nightShift': 'not-allowed'
+                }
+            }
+        };
+        const AUTH_KEY = 'pahalLibraryPassword';
+        const SESSION_KEY = 'pahalLibrarySession';
+        const APP_STATE_KEY = 'pahalLibraryState';
+
+        // --- DOM Elements ---
+        const authPage = document.getElementById('auth-page');
+        const authTitle = document.getElementById('auth-title');
+        const authForm = document.getElementById('auth-form');
+        const authPasswordInput = document.getElementById('auth-password');
+        const authPasswordConfirmContainer = document.getElementById('auth-password-confirm-container');
+        const authPasswordConfirmInput = document.getElementById('auth-password-confirm');
+        const authButton = document.getElementById('auth-button');
+        const authError = document.getElementById('auth-error');
+        const appContainer = document.getElementById('app-container');
+        const logoutButton = document.getElementById('logout-button');
+        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        
+        const studentForm = document.getElementById('student-form');
+        const studentFormTitle = document.getElementById('student-form-title');
+        const studentList = document.getElementById('student-list');
+        const feeStatusList = document.getElementById('fee-status-list');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const pages = document.querySelectorAll('.page');
+        const totalStudentsEl = document.getElementById('total-students-count');
+        const monthlyIncomeEl = document.getElementById('monthly-income-count');
+        const pendingFeesEl = document.getElementById('pending-fees-count');
+        const pendingFeesListEl = document.getElementById('pending-fees-list');
+        const currentMonthSpan = document.getElementById('current-month-span');
+
+        // New dashboard monthly elements
+        const currentDashboardMonthSpan = document.getElementById('current-dashboard-month-span');
+        const prevDashboardMonthBtn = document.getElementById('prev-dashboard-month');
+        const nextDashboardMonthBtn = document.getElementById('next-dashboard-month');
+        const monthlyStudentsJoinedEl = document.getElementById('monthly-students-joined');
+        const monthlyIncomeCollectedEl = document.getElementById('monthly-income-collected');
+        const monthlyFeesPendingEl = document.getElementById('monthly-fees-pending');
+
+
+        const prevMonthBtn = document.getElementById('prev-month');
+        const nextMonthBtn = document.getElementById('next-month');
+        const clearDataBtn = document.getElementById('clear-data');
+        const exportExcelBtn = document.getElementById('export-excel');
+        const importDataBtn = document.getElementById('import-data');
+        const importFileEl = document.getElementById('import-file');
+        const printReportBtn = document.getElementById('print-report');
+        const submitButton = document.getElementById('submit-button');
+        const shiftsCheckboxes = document.querySelectorAll('input[name="shifts"]');
+        const genderSelect = document.getElementById('gender');
+        const feeStructureForm = document.getElementById('fee-structure-form');
+
+        const modalContainer = document.getElementById('modal-container');
+        const modalContent = document.getElementById('modal-content');
+        const modalCloseBtn = document.getElementById('modal-close-button');
+        const modalOkBtn = document.getElementById('modal-ok-button');
+
+
+        // --- Utility Functions ---
+        function showModal(message, showOkButton = true) {
+            modalContent.innerHTML = message;
+            if (showOkButton) {
+                modalOkBtn.classList.remove('hidden');
+            } else {
+                modalOkBtn.classList.add('hidden');
+            }
+            modalContainer.classList.remove('hidden');
+            modalContainer.classList.add('flex');
+        }
+
+        function hideModal() {
+            modalContainer.classList.add('hidden');
+            modalContainer.classList.remove('flex');
+        }
+
+        function generateUniqueId() {
+            state.lastStudentId++;
+            return state.lastStudentId;
+        }
+
+        function formatIndianDate(date) {
+            return new Date(date).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function getMonthKey(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${d.getMonth() + 1}`;
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR'
+            }).format(amount);
+        }
+        
+        function calculateFee(student) {
+            const dayShifts = student.shifts.filter(s => s !== 'Night').length;
+            const hasNightShift = student.shifts.includes('Night');
+            let fee = 0;
+
+            if (student.gender === 'Male') {
+                if (dayShifts > 0) {
+                    fee += state.feeStructure.Male.dayShifts[dayShifts];
+                }
+                if (hasNightShift) {
+                    fee += state.feeStructure.Male.nightShift;
+                }
+            } else if (student.gender === 'Female') {
+                if (dayShifts > 0) {
+                     if (state.feeStructure.Female.dayShifts[dayShifts] !== 'not-allowed') {
+                        fee += state.feeStructure.Female.dayShifts[dayShifts];
+                     }
+                }
+                if (hasNightShift) {
+                    // This is handled by validation in the form, but good to have a check
+                    return 'Not Allowed';
+                }
+            } else {
+                // For 'Other' gender, could implement a default fee or show an alert.
+                // For now, returning 0.
+                return 0;
+            }
+            return fee;
+        }
+
+        // --- Data Persistence (using localStorage) ---
+        function saveState() {
+            localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+        }
+
+        function loadState() {
+            try {
+                const storedState = JSON.parse(localStorage.getItem(APP_STATE_KEY));
+                if (storedState) {
+                    // Merging loaded state with default state to handle new properties
+                    Object.assign(state, storedState);
+                }
+            } catch (error) {
+                console.error("Error loading state from localStorage:", error);
+            }
+        }
+
+        // --- Rendering Functions ---
+        function renderStudents() {
+            studentList.innerHTML = '';
+            state.students.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.address}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.contact}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.shifts.join(', ')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatIndianDate(student.joiningDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 ml-2" onclick="editStudent(${student.id})">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 ml-2" onclick="deleteStudent(${student.id})">Delete</button>
+                        <button class="text-blue-600 hover:text-blue-900 ml-2" onclick="generateAdmissionReceipt(${student.id})">Receipt</button>
+                    </td>
+                `;
+                studentList.appendChild(row);
+            });
+        }
+
+        function renderFees() {
+            feeStatusList.innerHTML = '';
+            const monthKey = getMonthKey(state.currentFeeMonth);
+            currentMonthSpan.textContent = state.currentFeeMonth.toLocaleString('en-IN', {
+                month: 'long',
+                year: 'numeric'
+            });
+
+            state.students.forEach(student => {
+                const studentFees = state.fees[student.id] || {};
+                const feeStatus = studentFees[monthKey] && studentFees[monthKey].status ? studentFees[monthKey].status : 'unpaid';
+                const paymentDate = studentFees[monthKey] && studentFees[monthKey].date ? formatIndianDate(studentFees[monthKey].date) : '-';
+                const paymentMode = studentFees[monthKey] && studentFees[monthKey].mode ? studentFees[monthKey].mode : '-';
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${feeStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${feeStatus.charAt(0).toUpperCase() + feeStatus.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${paymentDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${paymentMode}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        ${feeStatus === 'unpaid' ? `
+                            <select onchange="markFee(${student.id}, this.value, '${monthKey}')" class="text-sm rounded-md border-gray-300 p-1">
+                                <option value="">Mark Paid</option>
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                            </select>
+                        ` : `<button class="text-red-600 hover:text-red-900" onclick="markFeeAsUnpaid(${student.id}, '${monthKey}')">Mark Unpaid</button>`}
+                        <a href="#" class="text-indigo-600 hover:text-indigo-900 ml-2" onclick="showWhatsappReminder(${student.id}, '${student.name}', '${monthKey}')">Reminder</a>
+                        ${feeStatus === 'paid' ? `<button class="text-blue-600 hover:text-blue-900 ml-2" onclick="generateFeeReceipt(${student.id}, '${monthKey}')">Receipt</button>` : ''}
+                    </td>
+                `;
+                feeStatusList.appendChild(row);
+            });
+        }
+        
+        function updateDashboard() {
+            // Total Students
+            totalStudentsEl.textContent = state.students.length;
+            
+            const currentMonth = new Date();
+            const monthlyKey = getMonthKey(currentMonth);
+
+            // Monthly Income
+            let monthlyIncome = 0;
+            state.students.forEach(student => {
+                if (state.fees[student.id] && state.fees[student.id][monthlyKey] && state.fees[student.id][monthlyKey].status === 'paid') {
+                    const fee = calculateFee(student);
+                    if (typeof fee === 'number') {
+                        monthlyIncome += fee;
+                    }
+                }
+            });
+            monthlyIncomeEl.textContent = formatCurrency(monthlyIncome);
+
+            // Pending Fees Count & List
+            let pendingFeesCount = 0;
+            const pendingListHTML = state.students.map(student => {
+                const studentFeeStatus = state.fees[student.id] && state.fees[student.id][monthlyKey] && state.fees[student.id][monthlyKey].status;
+                if (!studentFeeStatus || studentFeeStatus === 'unpaid') {
+                    pendingFeesCount++;
+                    const monthName = currentMonth.toLocaleString('hi-IN', { month: 'long' });
+                    const dueAmount = calculateFee(student);
+                    const dueDate = "5 तारीख";
+                    const message = `नमस्ते ${student.name}, आपकी ${monthName} की लाइब्रेरी फीस ₹${dueAmount} बाकी है। कृपया ${dueDate} तक जमा करें। धन्यवाद - Pahal Library`;
+                    const whatsappUrl = `https://wa.me/${student.contact}?text=${encodeURIComponent(message)}`;
+                    return `
+                        <div class="flex items-center justify-between p-2 mb-2 bg-white rounded-md shadow-sm border border-red-200">
+                            <span class="text-sm font-medium text-red-800">${student.name} (${student.id})</span>
+                            <a href="${whatsappUrl}" target="_blank" class="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded hover:bg-red-200 transition duration-300">
+                                Send Reminder
+                            </a>
+                        </div>
+                    `;
+                }
+                return null;
+            }).filter(Boolean);
+
+            pendingFeesEl.textContent = pendingFeesCount;
+            pendingFeesListEl.innerHTML = pendingFeesCount > 0 ? pendingListHTML.join('') : '<p class="text-gray-500">No students with pending fees for the current month.</p>';
+
+            updateMonthlyDashboard(state.currentFeeMonth);
+        }
+
+        function updateMonthlyDashboard(date) {
+            const monthKey = getMonthKey(date);
+            currentDashboardMonthSpan.textContent = date.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+            const studentsJoined = state.students.filter(s => {
+                const joiningMonthKey = getMonthKey(s.joiningDate);
+                return joiningMonthKey === monthKey;
+            }).length;
+
+            let incomeCollected = 0;
+            let feesPending = 0;
+
+            state.students.forEach(student => {
+                const studentFees = state.fees[student.id] || {};
+                const feeStatus = studentFees[monthKey] && studentFees[monthKey].status;
+                const feeAmount = calculateFee(student);
+                
+                if (feeAmount !== 'Not Allowed') {
+                    if (feeStatus === 'paid') {
+                        incomeCollected += feeAmount;
+                    } else {
+                        feesPending++;
+                    }
+                }
+            });
+
+            monthlyStudentsJoinedEl.textContent = studentsJoined;
+            monthlyIncomeCollectedEl.textContent = formatCurrency(incomeCollected);
+            monthlyFeesPendingEl.textContent = feesPending;
+        }
+
+        function populateFeeForm() {
+            document.getElementById('fee-male-1').value = state.feeStructure.Male.dayShifts[1];
+            document.getElementById('fee-male-2').value = state.feeStructure.Male.dayShifts[2];
+            document.getElementById('fee-male-3').value = state.feeStructure.Male.dayShifts[3];
+            document.getElementById('fee-male-night').value = state.feeStructure.Male.nightShift;
+            document.getElementById('fee-female-1').value = state.feeStructure.Female.dayShifts[1];
+            document.getElementById('fee-female-2').value = state.feeStructure.Female.dayShifts[2];
+        }
+        
+        // --- Core Business Logic ---
+        function addOrUpdateStudent(event) {
+            event.preventDefault();
+
+            const studentIdToEdit = document.getElementById('student-id-edit').value;
+            const name = document.getElementById('student-name').value;
+            const studentAddress = document.getElementById('student-address').value;
+            const contact = document.getElementById('student-contact').value;
+            const parentName = document.getElementById('parent-name').value;
+            const joiningDate = document.getElementById('joining-date').value;
+            const gender = document.getElementById('gender').value;
+            const seatNumber = document.getElementById('seat-number').value;
+            const shifts = Array.from(document.querySelectorAll('input[name="shifts"]:checked')).map(cb => cb.value);
+            const dayShiftsCount = shifts.filter(s => s !== 'Night').length;
+            const hasNightShift = shifts.includes('Night');
+
+            if (shifts.length === 0) {
+                showModal("Please select at least one shift.");
+                return;
+            }
+
+            if (gender === "Female" && (dayShiftsCount === 3 || hasNightShift)) {
+                 showModal("Girls are not allowed to select all three day shifts or the night shift.");
+                 return;
+            }
+
+            if (studentIdToEdit) {
+                // Update existing student
+                const studentIndex = state.students.findIndex(s => s.id === parseInt(studentIdToEdit));
+                if (studentIndex > -1) {
+                    state.students[studentIndex] = {
+                        ...state.students[studentIndex],
+                        name,
+                        address: studentAddress,
+                        contact,
+                        parentName,
+                        joiningDate,
+                        gender,
+                        seatNumber,
+                        shifts,
+                    };
+                    saveState();
+                    renderStudents();
+                    renderFees(); // Rerender fees in case of name change
+                    updateDashboard();
+                    studentForm.reset();
+                    studentFormTitle.textContent = "Add New Student";
+                    submitButton.textContent = "Add Student";
+                    document.getElementById('student-id-edit').value = "";
+                    showModal(`Student **${name}** updated successfully!`);
+                }
+            } else {
+                // Add new student
+                const newStudent = {
+                    id: generateUniqueId(),
+                    name,
+                    address: studentAddress,
+                    contact,
+                    parentName,
+                    joiningDate,
+                    gender,
+                    seatNumber,
+                    shifts,
+                };
+
+                state.students.push(newStudent);
+                saveState();
+                renderStudents();
+                updateDashboard();
+                studentForm.reset();
+                showModal(`Student **${name}** added successfully with ID **${newStudent.id}**!`);
+            }
+        }
+        
+        function editStudent(id) {
+            const studentToEdit = state.students.find(s => s.id === id);
+            if (studentToEdit) {
+                document.getElementById('student-id-edit').value = id;
+                document.getElementById('student-name').value = studentToEdit.name;
+                document.getElementById('student-address').value = studentToEdit.address;
+                document.getElementById('student-contact').value = studentToEdit.contact;
+                document.getElementById('parent-name').value = studentToEdit.parentName;
+                document.getElementById('joining-date').value = studentToEdit.joiningDate;
+                document.getElementById('gender').value = studentToEdit.gender;
+                document.getElementById('seat-number').value = studentToEdit.seatNumber;
+
+                // Set shifts
+                document.querySelectorAll('input[name="shifts"]').forEach(checkbox => {
+                    checkbox.checked = studentToEdit.shifts.includes(checkbox.value);
+                });
+
+                studentFormTitle.textContent = `Edit Student: ${studentToEdit.name} (${studentToEdit.id})`;
+                submitButton.textContent = "Update Student";
+                
+                // Switch to the students page
+                document.querySelector('[data-page="students"]').click();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function deleteStudent(id) {
+            if (confirm(`Are you sure you want to delete student ID ${id}? This action is irreversible.`)) {
+                state.students = state.students.filter(s => s.id !== id);
+                delete state.fees[id];
+                saveState();
+                renderStudents();
+                renderFees();
+                updateDashboard();
+            }
+        }
+
+        function markFee(id, mode, monthKey) {
+            const student = state.students.find(s => s.id === id);
+            if (!student) {
+                showModal("Student not found.");
+                return;
+            }
+            if (calculateFee(student) === 'Not Allowed') {
+                 showModal("This student's shift combination is not allowed for fees.");
+                 return;
+            }
+            if (!state.fees[id]) {
+                state.fees[id] = {};
+            }
+            state.fees[id][monthKey] = {
+                status: 'paid',
+                date: new Date().toISOString().slice(0, 10),
+                mode: mode
+            };
+            saveState();
+            renderFees();
+            updateDashboard();
+            showModal(`Fee for student ID **${id}** has been marked as paid via ${mode}.`);
+        }
+
+        function markFeeAsUnpaid(id, monthKey) {
+            if (confirm("Are you sure you want to mark this fee as unpaid?")) {
+                if (state.fees[id] && state.fees[id][monthKey]) {
+                    state.fees[id][monthKey].status = 'unpaid';
+                    state.fees[id][monthKey].date = null;
+                    state.fees[id][monthKey].mode = null;
+                }
+                saveState();
+                renderFees();
+                updateDashboard();
+                showModal(`Fee for student ID **${id}** has been marked as unpaid.`);
+            }
+        }
+        
+        function showWhatsappReminder(id, name, monthKey) {
+            const student = state.students.find(s => s.id === id);
+            if (!student || !student.contact) {
+                showModal("Student's contact number not found.");
+                return;
+            }
+
+            const dueAmount = calculateFee(student);
+            if (dueAmount === 'Not Allowed' || dueAmount === 0) {
+                 showModal("This student's fee cannot be calculated for a reminder.");
+                 return;
+            }
+
+            const monthName = new Date(monthKey.replace('-', '/')).toLocaleString('hi-IN', { month: 'long' });
+            const dueDate = "5 तारीख";
+            const message = `नमस्ते ${name}, आपकी ${monthName} की लाइब्रेरी फीस ₹${dueAmount} बाकी है। कृपया ${dueDate} तक जमा करें। धन्यवाद - Pahal Library`;
+            const whatsappUrl = `https://wa.me/${student.contact}?text=${encodeURIComponent(message)}`;
+            
+            showModal(`
+                <h3 class="text-xl font-bold mb-2">WhatsApp Reminder</h3>
+                <p class="text-gray-700 font-medium mb-4">Click the button below to send the following message to **${name}**:</p>
+                <div class="bg-gray-100 p-4 rounded-lg border border-gray-200 text-sm mb-4">
+                    <p class="text-gray-800 whitespace-pre-wrap">${message}</p>
+                </div>
+                <a href="${whatsappUrl}" target="_blank" class="block text-center bg-green-500 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition duration-300">
+                    <i class="fab fa-whatsapp"></i> Send on WhatsApp
+                </a>
+            `);
+        }
+        
+        function exportToCsv() {
+            // Collect all unique months for which there are fees recorded
+            const allMonths = new Set();
+            Object.values(state.fees).forEach(studentMonths => {
+                Object.keys(studentMonths).forEach(monthKey => allMonths.add(monthKey));
+            });
+            const sortedMonths = Array.from(allMonths).sort();
+
+            // Define headers, including fee status for each month
+            const studentHeaders = ['ID', 'Name', 'Address', 'Contact No.', 'Parent Name', 'Gender', 'Seat Number', 'Shifts', 'Joining Date'];
+            const feeHeaders = sortedMonths.flatMap(monthKey => {
+                const [year, month] = monthKey.split('-');
+                const date = new Date(year, month - 1);
+                const monthName = date.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+                return [`${monthName} Status`, `${monthName} Date`, `${monthName} Mode`];
+            });
+
+            const headers = [...studentHeaders, ...feeHeaders];
+
+            // Create data rows
+            const data = state.students.map(student => {
+                const studentRow = [
+                    student.id,
+                    student.name,
+                    student.address,
+                    student.contact,
+                    student.parentName,
+                    student.gender,
+                    student.seatNumber,
+                    student.shifts.join(';'),
+                    student.joiningDate
+                ];
+
+                const feeData = sortedMonths.flatMap(monthKey => {
+                    const feeRecord = state.fees[student.id]?.[monthKey];
+                    return [
+                        feeRecord?.status || 'Unpaid',
+                        feeRecord?.date || '',
+                        feeRecord?.mode || ''
+                    ];
+                });
+
+                // Combine student data and fee data for the row
+                return [...studentRow, ...feeData];
+            });
+
+            // Convert to CSV format with proper quoting to handle commas in addresses
+            const csvRows = [
+                headers.map(h => `"${h}"`).join(','), // Quote headers
+                ...data.map(row => row.map(cell => `"${cell}"`).join(',')) // Quote each cell
+            ];
+
+            const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+            
+            const link = document.createElement('a');
+            link.setAttribute('href', encodeURI(csvContent));
+            link.setAttribute('download', 'pahal_library_data.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showModal("Data exported to CSV successfully.");
+        }
+
+        function importFromCsv(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    showModal("The imported file is empty or has no data.");
+                    return;
+                }
+
+                if (!confirm("Importing new data will overwrite all existing student records and fee data. Are you sure you want to proceed?")) {
+                    return;
+                }
+
+                const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+                const studentHeaders = ['ID', 'Name', 'Address', 'Contact No.', 'Parent Name', 'Gender', 'Seat Number', 'Shifts', 'Joining Date'];
+                const importedStudents = [];
+                const importedFees = {};
+                let maxId = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].match(/(?:"[^"]*"|[^,])+/g).map(value => value.trim().replace(/"/g, ''));
+                    if (values.length !== headers.length) continue; // Skip malformed lines
+
+                    const student = {
+                        id: parseInt(values[headers.indexOf('ID')]),
+                        name: values[headers.indexOf('Name')],
+                        address: values[headers.indexOf('Address')],
+                        contact: values[headers.indexOf('Contact No.')],
+                        parentName: values[headers.indexOf('Parent Name')],
+                        gender: values[headers.indexOf('Gender')],
+                        seatNumber: parseInt(values[headers.indexOf('Seat Number')]),
+                        shifts: values[headers.indexOf('Shifts')].split(';').filter(s => s !== ''),
+                        joiningDate: values[headers.indexOf('Joining Date')]
+                    };
+                    importedStudents.push(student);
+                    if (student.id > maxId) maxId = student.id;
+
+                    importedFees[student.id] = {};
+                    for(let j = studentHeaders.length; j < headers.length; j += 3) {
+                        const monthHeader = headers[j];
+                        const status = values[j];
+                        const date = values[j+1];
+                        const mode = values[j+2];
+                        if (status !== 'Unpaid') {
+                            const monthKeyMatch = monthHeader.match(/(\w{3}-\d{4})/);
+                            if (monthKeyMatch) {
+                                const [month, year] = monthKeyMatch[1].split('-');
+                                const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month);
+                                const actualMonthKey = `${year}-${monthIndex + 1}`;
+                                
+                                importedFees[student.id][actualMonthKey] = {
+                                    status: status,
+                                    date: date,
+                                    mode: mode
+                                };
+                            }
+                        }
+                    }
+                }
+
+                state.students = importedStudents;
+                state.lastStudentId = maxId;
+                state.fees = importedFees;
+                saveState();
+                renderStudents();
+                renderFees();
+                updateDashboard();
+                showModal(`Successfully imported **${importedStudents.length}** student records and their fee history.`);
+            };
+            reader.readAsText(file);
+        }
+        
+        function printPage(contentHtml) {
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Print</title>');
+            printWindow.document.write('<style>@import url("https://cdn.tailwindcss.com"); @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"); body { font-family: "Inter", sans-serif; } .print-area { padding: 2rem; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(contentHtml);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        }
+
+        function generateAdmissionReceipt(id) {
+            const student = state.students.find(s => s.id === id);
+            if (!student) {
+                showModal("Student not found.");
+                return;
+            }
+
+            const receiptTemplate = document.getElementById('admission-receipt-template').cloneNode(true);
+            receiptTemplate.style.display = 'block';
+
+            receiptTemplate.querySelector('#ar-student-id').textContent = student.id;
+            receiptTemplate.querySelector('#ar-student-name').textContent = student.name;
+            receiptTemplate.querySelector('#ar-parent-name').textContent = student.parentName;
+            receiptTemplate.querySelector('#ar-mobile-number').textContent = student.contact;
+            receiptTemplate.querySelector('#ar-student-address').textContent = student.address;
+            receiptTemplate.querySelector('#ar-joining-date').textContent = formatIndianDate(student.joiningDate);
+            receiptTemplate.querySelector('#ar-seat-number').textContent = student.seatNumber;
+            receiptTemplate.querySelector('#ar-shifts').textContent = student.shifts.join(', ');
+            
+            const receiptNo = Math.floor(Math.random() * 100000);
+            receiptTemplate.querySelector('#receipt-no-placeholder').textContent = receiptNo;
+            receiptTemplate.querySelector('#receipt-date-placeholder').textContent = formatIndianDate(new Date());
+
+            printPage(receiptTemplate.outerHTML);
+        }
+
+        function generateFeeReceipt(id, monthKey) {
+            const student = state.students.find(s => s.id === id);
+            const studentFee = state.fees[id] && state.fees[id][monthKey];
+            if (!student || !studentFee || studentFee.status !== 'paid') {
+                showModal("Paid fee record not found for this student and month.");
+                return;
+            }
+            
+            const feeAmount = calculateFee(student);
+            if (feeAmount === 'Not Allowed') {
+                showModal("Fee cannot be calculated for this student's shift combination.");
+                return;
+            }
+
+            const receiptTemplate = document.getElementById('fee-receipt-template').cloneNode(true);
+            receiptTemplate.style.display = 'block';
+
+            receiptTemplate.querySelector('#fr-student-id').textContent = student.id;
+            receiptTemplate.querySelector('#fr-student-name').textContent = student.name;
+            receiptTemplate.querySelector('#fr-month').textContent = new Date(monthKey.replace('-', '/')).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+            receiptTemplate.querySelector('#fr-fee-amount').textContent = formatCurrency(feeAmount);
+            receiptTemplate.querySelector('#fr-payment-date').textContent = formatIndianDate(studentFee.date);
+            receiptTemplate.querySelector('#fr-payment-mode').textContent = studentFee.mode;
+
+            const receiptNo = Math.floor(Math.random() * 100000);
+            receiptTemplate.querySelector('#fee-receipt-no-placeholder').textContent = receiptNo;
+            receiptTemplate.querySelector('#fee-receipt-date-placeholder').textContent = formatIndianDate(new Date());
+            
+            printPage(receiptTemplate.outerHTML);
+        }
+        
+        function handleFeeFormSubmit(event) {
+            event.preventDefault();
+            
+            state.feeStructure.Male.dayShifts[1] = parseInt(document.getElementById('fee-male-1').value);
+            state.feeStructure.Male.dayShifts[2] = parseInt(document.getElementById('fee-male-2').value);
+            state.feeStructure.Male.dayShifts[3] = parseInt(document.getElementById('fee-male-3').value);
+            state.feeStructure.Male.nightShift = parseInt(document.getElementById('fee-male-night').value);
+            state.feeStructure.Female.dayShifts[1] = parseInt(document.getElementById('fee-female-1').value);
+            state.feeStructure.Female.dayShifts[2] = parseInt(document.getElementById('fee-female-2').value);
+
+            saveState();
+            updateDashboard();
+            renderFees();
+            showModal("Fee structure has been saved successfully!");
+        }
+
+
+        // --- Authentication Logic ---
+        function checkLoginStatus() {
+            const storedPassword = localStorage.getItem(AUTH_KEY);
+            const sessionActive = sessionStorage.getItem(SESSION_KEY);
+
+            if (!storedPassword) {
+                // First-time setup
+                authTitle.textContent = "Create a new password";
+                authButton.textContent = "Set Password";
+                authPasswordConfirmContainer.classList.remove('hidden');
+                forgotPasswordLink.classList.add('hidden'); // Hide forgot password link until a password is set
+                authPage.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            } else if (sessionActive) {
+                // Already logged in
+                authPage.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initApp();
+            } else {
+                // Login page
+                authTitle.textContent = "Pahal Library Login";
+                authButton.textContent = "Login";
+                authPasswordConfirmContainer.classList.add('hidden');
+                forgotPasswordLink.classList.remove('hidden');
+                authPage.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const password = authPasswordInput.value;
+            const storedPassword = localStorage.getItem(AUTH_KEY);
+            authError.classList.add('hidden');
+
+            if (!storedPassword) {
+                // First-time setup
+                const confirmPassword = authPasswordConfirmInput.value;
+                if (password !== confirmPassword) {
+                    authError.textContent = "Passwords do not match.";
+                    authError.classList.remove('hidden');
+                    return;
+                }
+                if (password.length < 4) {
+                    authError.textContent = "Password must be at least 4 characters long.";
+                    authError.classList.remove('hidden');
+                    return;
+                }
+                localStorage.setItem(AUTH_KEY, password);
+                sessionStorage.setItem(SESSION_KEY, 'true');
+                authPage.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initApp();
+            } else {
+                // Login attempt
+                if (password === storedPassword) {
+                    sessionStorage.setItem(SESSION_KEY, 'true');
+                    authPage.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+                    initApp();
+                } else {
+                    authError.textContent = "Invalid password.";
+                    authError.classList.remove('hidden');
+                }
+            }
+        }
+        
+        function handleLogout() {
+            sessionStorage.removeItem(SESSION_KEY);
+            checkLoginStatus();
+        }
+
+        function handleForgotPassword(event) {
+            event.preventDefault();
+            const storedPassword = localStorage.getItem(AUTH_KEY);
+            if (!storedPassword) {
+                 showModal("You have not set a password yet. Please set one first.");
+                 return;
+            }
+
+            const passwordModalContent = `
+                <h3 class="text-xl font-bold mb-2">Change Password</h3>
+                <p class="text-red-500 text-sm mb-4">**Warning:** This feature is for local use only. It cannot verify your identity. You will need to know your current password to proceed.</p>
+                <form id="change-password-form">
+                    <div class="mb-4">
+                        <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                        <input type="password" id="current-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="new-password" class="block text-sm font-medium text-gray-700">New Password</label>
+                        <input type="password" id="new-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div class="mb-6">
+                        <label for="new-password-confirm" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                        <input type="password" id="new-password-confirm" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <p id="password-change-error" class="text-red-500 text-sm mb-4 text-center hidden"></p>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300">Change Password</button>
+                </form>
+            `;
+            showModal(passwordModalContent, false);
+
+            document.getElementById('change-password-form').addEventListener('submit', (event) => {
+                event.preventDefault();
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const newPasswordConfirm = document.getElementById('new-password-confirm').value;
+                const storedPassword = localStorage.getItem(AUTH_KEY);
+                const errorEl = document.getElementById('password-change-error');
+                errorEl.classList.add('hidden');
+
+                if (currentPassword !== storedPassword) {
+                    errorEl.textContent = "Current password is not correct.";
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                if (newPassword !== newPasswordConfirm) {
+                    errorEl.textContent = "New passwords do not match.";
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                if (newPassword.length < 4) {
+                    errorEl.textContent = "New password must be at least 4 characters long.";
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                localStorage.setItem(AUTH_KEY, newPassword);
+                hideModal();
+                showModal("Password has been successfully changed! Please log in with your new password.");
+            });
+        }
+
+
+        // --- Event Listeners and Initialization ---
+        function initApp() {
+            loadState();
+            renderStudents();
+            renderFees();
+            updateDashboard();
+            populateFeeForm();
+            
+            // Set initial month for fees
+            state.currentFeeMonth = new Date();
+            renderFees();
+            
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    pages.forEach(page => page.classList.remove('active'));
+                    navButtons.forEach(btn => {
+                        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+                        btn.classList.add('bg-gray-200', 'text-gray-800');
+                    });
+                    
+                    const pageId = button.dataset.page;
+                    document.getElementById(`${pageId}-page`).classList.add('active');
+                    button.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+                    button.classList.remove('bg-gray-200', 'text-gray-800');
+                    
+                    // Re-render pages that need dynamic content
+                    if (pageId === 'students') renderStudents();
+                    if (pageId === 'fees') renderFees();
+                    if (pageId === 'dashboard') {
+                        // Reset dashboard month to current month on navigation
+                        state.currentFeeMonth = new Date();
+                        updateDashboard();
+                    }
+                });
+            });
+
+            // Dashboard month navigation listeners
+            prevDashboardMonthBtn.addEventListener('click', () => {
+                state.currentFeeMonth.setMonth(state.currentFeeMonth.getMonth() - 1);
+                updateMonthlyDashboard(state.currentFeeMonth);
+            });
+            nextDashboardMonthBtn.addEventListener('click', () => {
+                state.currentFeeMonth.setMonth(state.currentFeeMonth.getMonth() + 1);
+                updateMonthlyDashboard(state.currentFeeMonth);
+            });
+            
+            // Initial active page
+            document.querySelector('[data-page="dashboard"]').click();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkLoginStatus();
+        });
+        
+        authForm.addEventListener('submit', handleAuth);
+        logoutButton.addEventListener('click', handleLogout);
+        forgotPasswordLink.addEventListener('click', handleForgotPassword);
+        
+        studentForm.addEventListener('submit', addOrUpdateStudent);
+        feeStructureForm.addEventListener('submit', handleFeeFormSubmit);
+        modalCloseBtn.addEventListener('click', hideModal);
+        modalOkBtn.addEventListener('click', hideModal);
+        
+        prevMonthBtn.addEventListener('click', () => {
+            state.currentFeeMonth.setMonth(state.currentFeeMonth.getMonth() - 1);
+            renderFees();
+        });
+        
+        nextMonthBtn.addEventListener('click', () => {
+            state.currentFeeMonth.setMonth(state.currentFeeMonth.getMonth() + 1);
+            renderFees();
+        });
+
+        clearDataBtn.addEventListener('click', () => {
+            if (confirm("Are you absolutely sure you want to clear all data? This action cannot be undone.")) {
+                localStorage.removeItem(APP_STATE_KEY);
+                location.reload();
+            }
+        });
+        
+        exportExcelBtn.addEventListener('click', exportToCsv);
+        importDataBtn.addEventListener('click', () => importFileEl.click());
+        importFileEl.addEventListener('change', importFromCsv);
+
+
+        genderSelect.addEventListener('change', () => {
+            const selectedGender = genderSelect.value;
+            const nightShiftCheckbox = document.querySelector('input[name="shifts"][value="Night"]');
+            
+            if (selectedGender === 'Female') {
+                nightShiftCheckbox.checked = false;
+                nightShiftCheckbox.disabled = true;
+            } else {
+                nightShiftCheckbox.disabled = false;
+            }
+
+            const checkedShifts = Array.from(shiftsCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            const dayShiftsCount = checkedShifts.filter(s => s !== 'Night').length;
+
+            if (selectedGender === 'Female' && dayShiftsCount === 3) {
+                 showModal("Girls are not allowed to select all three day shifts.");
+                 // Revert selection
+                 shiftsCheckboxes.forEach(checkbox => {
+                    if (checkbox.value === 'Evening') {
+                        checkbox.checked = false;
+                    }
+                 });
+            }
+        });
+
+        shiftsCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const checkedShifts = Array.from(shiftsCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+                const dayShiftsCount = checkedShifts.filter(s => s !== 'Night').length;
+                const gender = genderSelect.value;
+
+                if (gender === 'Female' && dayShiftsCount > 2) {
+                    showModal("Female students cannot select all three day shifts.");
+                    checkbox.checked = false;
+                }
+            });
+        });
+        
+    </script>
+</body>
+</html>
